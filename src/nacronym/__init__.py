@@ -1,15 +1,4 @@
 #!/usr/bin/env python3
-"""nacronym: NASA acronym search tool
-Usage:
-    nacronym [options] <term>
-
-Options:
-    -h --help               Show this help
-    -v --version            Show the version
-    -c --case-sensitive     Enable case-sensitive searching
-    -t <term-file>          Term file (JSON) override
-    -m <match-threshold>    Match threshold can be: loose, medium, or strict [default: strict]
-"""
 
 #   nacronym: NASA acronym search tool
 #
@@ -27,7 +16,8 @@ import os
 import traceback
 import time
 import json
-from docopt import docopt           # Argument parsing
+import argparse
+import pathlib
 from fuzzywuzzy import fuzz         # Fuzzy string matching
 from fuzzywuzzy import process      #
 
@@ -150,16 +140,16 @@ class TermDictionary:
 
         return self.data
 
-    def GetMatchRatio(self, search, term):
+    def GetMatchRatio(self, search, term, case_sensitive):
         """
         Wrapper for the `fuzz.ratio` method
         """
-        search = search if arguments['--case-sensitive'] else search.upper()
-        term = term if arguments['--case-sensitive'] else term.upper()
+        search = search if case_sensitive else search.upper()
+        term = term if case_sensitive else term.upper()
 
         return fuzz.ratio(search, term)
 
-    def Search(self, search, match_threshold):
+    def Search(self, search, match_threshold, case_sensitive):
         """
         Search for the term and return a list of results
         """
@@ -167,7 +157,7 @@ class TermDictionary:
 
         for term in self.terms:
             # Convert to uppercase and perform fuzzy string match
-            if self.GetMatchRatio(search, term.data['term']) > match_threshold:
+            if self.GetMatchRatio(search, term.data['term'], case_sensitive) > match_threshold:
                 results.Add(term)
 
         return results
@@ -176,12 +166,30 @@ def main():
     """
     Get the term list and search for the given term
     """
-    term = arguments['<term>']
-    match_threshold = MATCH_THRESHOLDS[arguments['-m']]
+    parser = argparse.ArgumentParser(prog="nacronym",
+                                     description="NASA acronym search tool")
+    parser.add_argument("-c", "--case-sensitive",
+                        action="store_true",
+                        help="Enable case-sensitive searching")
+    parser.add_argument("-t", "--term-file",
+                        type=pathlib.Path,
+                        help="Term file (JSON) override")
+    parser.add_argument("-m", "--match-threshold",
+                        choices=list(MATCH_THRESHOLDS.keys()),
+                        default="strict",
+                        help="Match threshold")
+    parser.add_argument("-v", "--version",
+                        action="version",
+                        version="%(prog)s 0.1")
+    parser.add_argument("term",
+                        help="The acronym to be looked up")
+    args = parser.parse_args()
+    term = args.term
+    match_threshold = MATCH_THRESHOLDS[args.match_threshold]
 
     # Default to `terms.json` if no override
-    if arguments['-t']:
-        term_file = arguments['-t']
+    if args.term_file:
+        term_file = args.term_file
     else:
         term_file = os.path.join(os.path.dirname(__file__), 'terms.json')
 
@@ -193,7 +201,7 @@ def main():
     dictionary = TermDictionary(term_file)
 
     # Search for term
-    results = dictionary.Search(term, match_threshold)
+    results = dictionary.Search(term, match_threshold, args.case_sensitive)
 
     # Print results
     status = results.Print()
@@ -203,8 +211,6 @@ def main():
 
 def entry():
     try:
-        global arguments
-        arguments = docopt(__doc__, version='nacronym 1.4.2')
         main()
         sys.exit(0)
 

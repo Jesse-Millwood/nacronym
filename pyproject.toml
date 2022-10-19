@@ -18,7 +18,6 @@ classifiers = [
     "Operating System :: OS Intependent",
 ]
 dependencies = [
-    "docopt",
     "fuzzywuzzy",
     "python-Levenshtein",
 ]
