@@ -187,7 +187,7 @@ def main():
 
     # Make sure term file exists
     if not os.path.exists(term_file):
-        raise Exception('Term file \'' + term_file + '\' does not exist')
+        raise Exception(f"Term file {term_file} does not exist")
 
     # Create the term dictionary
     dictionary = TermDictionary(term_file)
